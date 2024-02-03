@@ -1,0 +1,13 @@
+/* styles.css */
+.linksheet-notification {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 200px;
+  height: 200px;
+  background-color: red;
+}
+
+.linksheet-notification_hidden {
+    display: none;
+}
