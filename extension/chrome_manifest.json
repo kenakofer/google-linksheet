@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Google LinkSheet",
   "version": "1.0",
-  "description": "Save and manage web links in Google Sheets directly from your browser.",
+  "description": "Save and manage web links in Google Sheets directly from your chrome.",
   "icons": {
     "16": "images/icon16.png",
     "48": "images/icon48.png",

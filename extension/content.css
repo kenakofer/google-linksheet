@@ -3,11 +3,11 @@
   position: fixed;
   top: 0;
   right: 0;
-  width: 200px;
-  height: 200px;
-  background-color: red;
+  background-color: #ddd;
+  padding: 10px;
+  color: #111;
 }
 
-.linksheet-notification_hidden {
+.linksheet-notification-hidden {
     display: none;
 }
