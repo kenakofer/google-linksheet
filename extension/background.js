@@ -130,6 +130,16 @@ async function lookupPageInSheet(url) {
 
 // Function to handle adding the page to Google Sheets
 async function addPageToSheet(title, url) {
+    // Check if the user is authenticated
+    if (!accessToken) {
+        console.log('Re-authenticating...');
+        authenticate(function() {
+            // Try adding the page to Google Sheets after re-authenticating
+            addPageToSheet(title, url);
+        });
+        return;
+    }
+
     // Check if the page is already in the cache and unfinished
     const cached = await lookupPageInSheet(url);
     if (cached && !cached.finished) {
@@ -143,13 +153,6 @@ async function addPageToSheet(title, url) {
                 url: url
             });
         });
-        return;
-    }
-
-
-    // Check if the user is authenticated
-    if (!accessToken) {
-        authenticate();
         return;
     }
     // Title, URL, and Date columns
@@ -177,8 +180,11 @@ async function addPageToSheet(title, url) {
     .then(response => {
         if (response.status == 401) {
             console.log('Re-authenticating...');
-            authenticate();
-            addPageToSheet(title, url);
+            authenticate(function() {
+                // Try adding the page to Google Sheets after re-authenticating
+                addPageToSheet(title, url);
+            });
+            return;
         }
         return response.json();
     })
@@ -216,7 +222,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
 });
 
-function authenticate() {
+function authenticate(callback) {
     console.log('Authenticating...');
     let redirectUrl = chrome.identity.getRedirectURL();
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&response_type=token&scope=${encodeURIComponent('https://www.googleapis.com/auth/spreadsheets')}&redirect_uri=${encodeURIComponent(redirectUrl)}`;
@@ -240,6 +246,11 @@ function authenticate() {
 
             // Store the access token securely
             chrome.storage.local.set({ accessToken });
+
+            // Call the callback function if it exists
+            if (callback) {
+                callback();
+            }
         }
     );
 }
