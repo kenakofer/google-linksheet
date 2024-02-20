@@ -1,16 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     const authenticateBtn = document.getElementById('authenticate');
-    const lastPageEl = document.getElementById('lastPage');
-
-    // Function to update the last page information
-    function updateLastPageInfo() {
-        // Retrieve last page info from storage
-        chrome.storage.local.get(['lastPage'], function(result) {
-            if (result.lastPage) {
-                lastPageEl.textContent = `Last page added: ${result.lastPage.title}`;
-            }
-        });
-    }
 
     // Listen for authenticate button clicks
     authenticateBtn.addEventListener('click', () => {
@@ -18,6 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.runtime.sendMessage({action: "authenticate"});
     });
 
+    // Save the current tab URL
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        const tab = tabs[0];
+        const url = new URL(tab.url);
+        const domain = url.hostname;
 
-    updateLastPageInfo();
+        // Display the current tab URL
+        // document.getElementById('current-url').innerText = domain;
+        console.log("popup loaded " + domain);
+    });
 });

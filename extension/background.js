@@ -107,6 +107,7 @@ chrome.runtime.onMessage.addListener(
 );
 
 
+
 // ======================================================
 // ======================================================
 // ======================================================
@@ -116,6 +117,18 @@ const spreadsheetId = '1BDW6n6wABMIIx-p-5NZUV_EQLv49nXQAwhn85jx22T8';
 
 cache_map = new Map();
 
+// Event for when the user clicks the extension icon
+chrome.browserAction.onClicked.addListener(function (tab) {
+        console.log('Icon clicked. Adding page to Google Sheets:', activeTab.title, activeTab.url);
+    // Add the current page to Google Sheets
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        var activeTab = tabs[0];
+        console.log('Icon clicked. Adding page to Google Sheets:', activeTab.title, activeTab.url);
+        addPageToSheet(activeTab.title, activeTab.url);
+    });
+});
+
+// Event for when the user installs the extension
 chrome.runtime.onInstalled.addListener(() => {
     chrome.menus.create({
         id: "addPageToSheet",
@@ -240,8 +253,6 @@ async function catchIf401(response, callback) {
     }
     return response;
 }
-
-
 
 // Function to handle adding the page to Google Sheets
 async function addPageToSheet(title, url) {
