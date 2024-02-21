@@ -1,7 +1,5 @@
 // TODO
 // 2. Undo button deletes the last row
-// 3. Clicking extension icon saves the current page to Google Sheets
-// 4. Add save date to Google Sheets
 // 5. Fetch header image from the page and save it to Google Sheets
 
 class AuthService {
@@ -119,7 +117,7 @@ cache_map = new Map();
 
 // Event for when the user clicks the extension icon
 chrome.browserAction.onClicked.addListener(function (tab) {
-        console.log('Icon clicked. Adding page to Google Sheets:', activeTab.title, activeTab.url);
+    console.log('Icon clicked. Adding page to Google Sheets:', activeTab.title, activeTab.url);
     // Add the current page to Google Sheets
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         var activeTab = tabs[0];
@@ -127,6 +125,29 @@ chrome.browserAction.onClicked.addListener(function (tab) {
         addPageToSheet(activeTab.title, activeTab.url);
     });
 });
+
+// Event for popup to add a page
+chrome.runtime.onMessage.addListener(
+    function (request, sender, sendResponse) {
+        console.log("message received.")
+        if (request.action == "savePage") {
+            console.log("savePage message received.")
+            addPageToSheet(request.title, request.url);
+        }
+    }
+);
+
+// Event to send the most recent rows
+chrome.runtime.onMessage.addListener(
+    async function (request, sender, sendResponse) {
+        if (request.action == "getItems") {
+            console.log("getItems message received.")
+            const items = await getRecentRows(request.count);
+            console.log(items);
+            chrome.runtime.sendMessage({ action: "returnItems", items: items });
+        }
+    }
+);
 
 // Event for when the user installs the extension
 chrome.runtime.onInstalled.addListener(() => {
@@ -162,9 +183,29 @@ chrome.runtime.onInstalled.addListener(() => {
 
 });
 
+function stripUrlParams(url) {
+    let hashIndex = url.indexOf("#");
+    let queryIndex = url.indexOf("?");
+
+    // Find the earliest index of either '#' or '?'
+    let endIndex = -1;
+    if (hashIndex > -1 && queryIndex > -1) {
+        endIndex = Math.min(hashIndex, queryIndex);
+    } else if (hashIndex > -1) {
+        endIndex = hashIndex;
+    } else if (queryIndex > -1) {
+        endIndex = queryIndex;
+    }
+
+    // If either '#' or '?' was found, strip everything after it; otherwise, return the original URL
+    return endIndex > -1 ? url.substring(0, endIndex) : url;
+}
+
+
 function myCheapHash(str) {
-    // Should be equivalent to the following Excel formula:
+    // Should be equivalent to the following Excel formula, which is performed after stripping URL params:
     // =MOD(SUMPRODUCT(CODE(MID(D4, ROW(INDIRECT("1:" & LEN(D4))), 1))), $J$1)+1
+    str = stripUrlParams(str);
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
         hash += str.charCodeAt(i);
@@ -188,14 +229,83 @@ function numToLetter(num) {
 }
 
 async function isPageInSheet(url) {
+    url = stripUrlParams(url);
     await lookupPageInSheet(url);
 }
 
 function pageInCache(url) {
+    url = stripUrlParams(url);
     return cache_map.has(url) ? cache_map.get(url) : false;
 }
 
+async function getRowCount(force_refresh) {
+    const cacheKey = "rowCount"
+    if (!force_refresh && cache_map.has(cacheKey)) {
+        return cache_map.get(cacheKey);
+    }
+    const cell = `Stats!B2`;
+    const token = await authService.getToken();
+    if (!token) {
+        console.log('Don\'t have a token yet');
+        return;
+    }
+
+    const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(cell)}?access_token=${token}`;
+
+    return await fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Getting the row count', data);
+            const count = data.values[0][0];
+            console.log(count);
+            cache_map.set(cacheKey, count);
+            return count;
+        });
+}
+
+async function getRecentRows(count) {
+    const rowCount = await getRowCount();
+    if (!rowCount) {
+        console.log("Couldn't get the row count")
+        return;
+    }
+    const token = await authService.getToken();
+    if (!token) {
+        console.log('Don\'t have a token yet');
+        return;
+    }
+    const rangeEnd = rowCount;
+    const rangeStart = Math.max(rangeEnd - count + 1, 2) // Don't let the range begin before row 2 where the data starts
+    const range = `A${rangeStart}:K${rangeEnd}` // Grab all the data columns
+    const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?access_token=${token}`;
+
+    return await fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Got recent rows', data);
+            let returnValues = [];
+            for (let i = data.values.length - 1; i >= 0; i--) {
+                const [index, index2, blank1, title, url, dateSaved, notes, blank2, finished, rating] = data.values[i];
+                const values = {
+                    index: index,
+                    title: title,
+                    finished: finished,
+                    dateSaved: dateSaved,
+                    notes: notes,
+                    finished: finished,
+                    url: url
+                }
+                cache_map.set(url, values);
+                console.log(1)
+                returnValues.push(values);
+                console.log(2)
+            }
+            return returnValues;
+        });
+}
+
 async function lookupPageInSheet(url) {
+    url = stripUrlParams(url);
     const column = numToLetter(myCheapHash(url));
     const range = `LookupCONCAT!${column}:${column}`;
     const token = await authService.getToken();
@@ -209,7 +319,7 @@ async function lookupPageInSheet(url) {
     return await fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-            console.log('Page in Google Sheets', data);
+            console.log('Checking for page in Google Sheets', data);
             // For each row in the column, check if the URL is present. Go latest to earliestvk
             for (let i = data.values.length - 1; i >= 0; i--) {
                 // "7\nhttps://forum.kittensgame.com/c/kittensgame\nFALSE"
@@ -220,14 +330,15 @@ async function lookupPageInSheet(url) {
                 const finished = finishedText == 'TRUE';
 
                 // Add each entry to the cache
-                cache_map.set(pageURL, {
-                    index: index,
-                    dateAdded: dateAdded,
-                    finished: finished
-                });
+                let values = cache_map.get(pageURL) || {};
+                values.index = index;
+                values.dateAdded = dateAdded;
+                values.finished = finished;
+                cache_map.set(pageURL, values);
 
                 if (pageURL == url) {
                     console.log('Page already in Google Sheets');
+                    currentTabUpdateIcon();
                     return true;
                 }
             }
@@ -247,7 +358,7 @@ async function catchIf401(response, callback) {
         console.log('Re-authenticating...');
         authService.authenticate(function () {
             // Try the request again after re-authenticating
-            callback();
+            //callback();
         });
         return;
     }
@@ -256,12 +367,14 @@ async function catchIf401(response, callback) {
 
 // Function to handle adding the page to Google Sheets
 async function addPageToSheet(title, url) {
+    url = stripUrlParams(url);
     // Check if the user is authenticated
-    if (!authService.getToken()) {
+    const token = await authService.getToken()
+    if (!token) {
         console.log('Re-authenticating...');
         authService.authenticate(function () {
             // Try adding the page to Google Sheets after re-authenticating
-            addPageToSheet(title, url);
+            // addPageToSheet(title, url);
         });
         return;
     }
@@ -285,7 +398,7 @@ async function addPageToSheet(title, url) {
     const range = 'C2:E2';
 
     // API URL for appending data to a Google Sheet
-    const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED&access_token=${authService.accessToken}`;
+    const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=USER_ENTERED&access_token=${token}`;
 
     // Sheets uses days since 30/12/1899 as the date format. Use our time zone.
     const timezoneOffset = new Date().getTimezoneOffset() * 60 * 1000; // in milliseconds
@@ -302,7 +415,7 @@ async function addPageToSheet(title, url) {
         },
         body: JSON.stringify(body)
     })
-        .then(catchIf401(response, addPageToSheet.bind(null, title, url)))
+        // .then(response => catchIf401(response, addPageToSheet.bind(null, title, url)))
         .then(response => response.json())
         .then(data => {
             const cell = data.updates.updatedRange.split('!')[1].split(':')[0]
@@ -314,6 +427,12 @@ async function addPageToSheet(title, url) {
                 dateAdded: date_number,
                 finished: false
             });
+
+            // Update the icon
+            currentTabUpdateIcon();
+
+            // Force update total rows from sheet formula
+            getRowCount(true);
 
             // Show a notification in the page
             chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -350,6 +469,7 @@ chrome.runtime.onMessage.addListener(
 );
 
 async function checkIfPageIsSaved(url) {
+    url = stripUrlParams(url);
     // If we have the entry in the cache, trust it without making the request
     if (!cache_map.has(url)) {
         console.log('Request to check if page is saved:', url);
@@ -385,6 +505,14 @@ async function checkAndUpdateIcon(tabId) {
     const isSaved = await checkIfPageIsSaved(tab.url);
     console.log('Page is saved:', isSaved);
     updateIcon(tabId, isSaved);
+}
+
+async function currentTabUpdateIcon() {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        console.log(tab)
+        checkAndUpdateIcon(tab.id);
+    });
 }
 
 // When the active tab changes
