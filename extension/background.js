@@ -296,9 +296,7 @@ async function getRecentRows(count) {
                     url: url
                 }
                 cache_map.set(url, values);
-                console.log(1)
                 returnValues.push(values);
-                console.log(2)
             }
             return returnValues;
         });
