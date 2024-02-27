@@ -1,64 +1,71 @@
 body,
 html {
-    width: 300px;
-    padding: 10px;
-    font-family: Arial, sans-serif;
+	width: 300px;
+	max-height: 600px;
+	padding: 0 0;
+	margin: 0 0;
+	font-family: Arial, sans-serif;
+	background-color: #EEE;
 }
 
 #content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	height: 378px;
+	overflow-y: scroll;
+	padding: 0px 6px 0 7px;
 }
 
 button {
-    margin-top: 20px;
-    padding: 10px 20px;
-    cursor: pointer;
+	margin-top: 20px;
+	padding: 10px 20px;
+	cursor: pointer;
 }
 
 #notification {
-    margin-top: 20px;
-    padding: 10px;
-    border-radius: 5px;
-    display: none;
+	margin-top: 20px;
+	padding: 10px;
+	border-radius: 5px;
+	display: none;
 }
 
 #items {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 }
 
 .item {
-    display: flex;
-    align-items: center;
-    margin-top: 10px;
+	display: flex;
+	align-items: center;
+	margin-top: 10px;
 }
 
 .item-title {
-    margin-left: 10px;
+	color: black;
+	font-weight: bold;
+	text-decoration: none;
 }
 
-.item-delete {
-    cursor: pointer;
-    margin-left: 10px;
+svg {
+	width: 20px;
 }
 
-.item-finished {
-    cursor: pointer;
-    margin-left: 10px;
+button {
+	margin: 0px 0px;
+	padding: 0px 0px;
 }
 
-.fas {
-    cursor: pointer;
-    margin-left: 10px;
+td {
+	vertical-align: middle;
 }
 
-.fa-trash {
-    color: red;
+tr {
+	box-shadow: 0px 1px 0 0px #BBB;
 }
 
-.fa-check {
-    color: green;
+table {
+	border-collapse: separate;
+	border-spacing: 0 15px;
 }
