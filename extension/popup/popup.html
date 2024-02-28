@@ -10,6 +10,22 @@
 <body>
 	<div id="content">
     	<div id="notification"></div>
+
+        <div id="current-page">
+            <div id="save-current-page-row" style="display: none;">
+                <span>Save to LinkSheet:</span>
+                <input type="text" id="current-page-title" placeholder="Title" />
+                <input type="text" id="current-page-url" placeholder="URL" />
+                <button id="save-current-page-button">Save</button>
+            </div>
+            <div id="current-page-saved-row" style="display: none;">
+                <span>Current page saved to LinkSheet</span>
+                <button class="finish-button" id="finish-current-page" data-id="unset">
+                    <svg class="checkbox" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                </button>
+            </div>
+        </table>
+
     	<table id="items">
         	<tr>
             	<td>Loading list...</td>

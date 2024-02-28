@@ -30,6 +30,12 @@ button {
 	display: none;
 }
 
+#save-current-page-row td {
+    padding: 0px 0px;
+    width: 25%;
+
+}
+
 #items {
 	display: flex;
 	flex-direction: column;
